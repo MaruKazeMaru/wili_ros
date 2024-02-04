@@ -10,18 +10,27 @@ from wilitools import Gaussian, wiliDB
 from ._convert import hmm_parameter_to_ros_msg, ros_msg_to_hmm_parameter
 
 class DBAgent(Node):
-    def __init__(self, db_path:str, area_id:int):
+    def __init__(self):
         super().__init__("db_agent")
 
-        self.db = wiliDB(db_path)
-        self.area_id = area_id
+        self.declare_parameter("db_url")
+        self.declare_parameter("area_id")
+
+        self.db_url = self.get_parameter("db_url").get_parameter_value().string_value
+        self.area_id = self.get_parameter("area_id").get_parameter_value().integer_value
+
+        self.get_logger().info("db_url={}".format(self.db_url))
+        self.get_logger().info("area_id={}".format(self.area_id))
+
+        self.db = wiliDB(self.db_url)
+        self.get_logger().info("connected with database".format(self.area_id))
 
         self.pub_init_hmm = self.create_publisher(Float32MultiArray, 'init_hmm', 1)
         self.sub_new_hmm = self.create_subscription(Float32MultiArray, "new_hmm", self.cb_new_hmm, 1)
 
-        init_prob = self.db.read_init_prob(area_id)
-        tr_prob = self.db.read_tr_prob(area_id)
-        gaussian = self.db.read_gaussian(area_id)
+        init_prob = self.db.read_init_prob(self.area_id)
+        tr_prob = self.db.read_tr_prob(self.area_id)
+        gaussian = self.db.read_gaussian(self.area_id)
         msg = hmm_parameter_to_ros_msg(init_prob, tr_prob, gaussian.avrs, gaussian.covars)
         self.pub_init_hmm.publish(msg)
         self.get_logger("published \"init_hmm\"")
