@@ -9,9 +9,9 @@ from wilitools import Gaussian, wiliDB
 
 from ._convert import hmm_parameter_to_ros_msg, ros_msg_to_hmm_parameter
 
-class DBNode(Node):
+class DBAgent(Node):
     def __init__(self, db_path:str, area_id:int):
-        super().__init__('hmm_node')
+        super().__init__("db_agent")
 
         self.db = wiliDB(db_path)
         self.area_id = area_id
@@ -37,7 +37,7 @@ class DBNode(Node):
 
 def main():
     rclpy.init()
-    node = DBNode()
+    node = DBAgent()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

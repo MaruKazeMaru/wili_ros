@@ -1,17 +1,17 @@
 # SPDX-FileCopyrightText: 2024 ShinagwaKazemaru
 # SPDX-License-Identifier: MIT License
 
-import numpy as np
 from hmmlearn.hmm import GaussianHMM
+import numpy as np
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray, MultiArrayDimension, MultiArrayLayout
 
 from ._convert import hmm_parameter_to_ros_msg, ros_msg_to_hmm_parameter
 
-class HMMNode(Node):
+class HMMUpdater(Node):
     def __init__(self):
-        super().__init__('hmm_node')
+        super().__init__('hmm_updater')
 
         self.motion_num:int = None
         self.model:GaussianHMM = None
@@ -70,7 +70,7 @@ class HMMNode(Node):
 
 def main():
     rclpy.init()
-    node = HMMNode()
+    node = HMMUpdater()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
