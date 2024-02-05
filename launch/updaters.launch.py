@@ -25,6 +25,11 @@ def generate_launch_description():
 		    executable="hmm_updater",
 	    	output="screen"
     	),
+    	Node(
+	    	package="wili_ros",
+		    executable="suggester_dens_updater",
+	    	output="screen"
+    	),
         Node(
 		    package="wili_ros",
 		    executable="db_agent",

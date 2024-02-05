@@ -7,7 +7,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray, MultiArrayDimension, MultiArrayLayout
 
-from ._convert import hmm_parameter_to_ros_msg, ros_msg_to_hmm_parameter
+from ._convert import hmm_to_msg, msg_to_hmm
 
 class HMMUpdater(Node):
     def __init__(self):
@@ -16,8 +16,8 @@ class HMMUpdater(Node):
         self.motion_num:int = None
         self.model:GaussianHMM = None
 
-        self.pub_new_hmm = self.create_publisher(Float32MultiArray, 'new_hmm', 1)
-        self.sub_init_hmm = self.create_subscription(Float32MultiArray, "init_hmm", self.cb_init_hmm, 1)
+        self.pub_new_hmm = self.create_publisher(Float32MultiArray, "new_hmm", 1)
+        self.sub_init_hmm = self.create_subscription(Float32MultiArray, "init_suggester", self.cb_init_suggester, 1)
         self.sub_obs = self.create_subscription(Float32MultiArray, "observation", self.cb_observation, 5)
 
 
@@ -30,12 +30,12 @@ class HMMUpdater(Node):
         self.model.fit(obs)
 
         hps = self._get_hmm_parameters()
-        msg = hmm_parameter_to_ros_msg(*hps)
+        msg = hmm_to_msg(*hps)
         self.pub_new_hmm.publish(msg)
 
 
-    def cb_init_hmm(self, msg:Float32MultiArray):
-        hps = ros_msg_to_hmm_parameter(msg)
+    def cb_init_suggester(self, msg:Float32MultiArray):
+        hps = msg_to_hmm(msg)
         self._set_hmm_parameters(*hps)
 
 

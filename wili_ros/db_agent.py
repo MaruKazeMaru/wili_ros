@@ -7,7 +7,7 @@ from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray, MultiArrayDimension, MultiArrayLayout
 from wilitools import Gaussian, wiliDB
 
-from ._convert import hmm_parameter_to_ros_msg, ros_msg_to_hmm_parameter
+from ._convert import suggester_to_msg, msg_to_hmm, msg_to_dens
 
 class DBAgent(Node):
     def __init__(self):
@@ -25,23 +25,34 @@ class DBAgent(Node):
         self.db = wiliDB(self.db_url)
         self.get_logger().info("connected with database".format(self.area_id))
 
-        self.pub_init_hmm = self.create_publisher(Float32MultiArray, 'init_hmm', 1)
+        self.pub_init_suggester = self.create_publisher(Float32MultiArray, "init_suggester", 1)
         self.sub_new_hmm = self.create_subscription(Float32MultiArray, "new_hmm", self.cb_new_hmm, 1)
+        self.sub_new_dens = self.create_subscription(Float32MultiArray, "new_dens", self.cb_new_dens, 1)
 
         init_prob = self.db.read_init_prob(self.area_id)
         tr_prob = self.db.read_tr_prob(self.area_id)
         gaussian = self.db.read_gaussian(self.area_id)
-        msg = hmm_parameter_to_ros_msg(init_prob, tr_prob, gaussian.avrs, gaussian.covars)
-        self.pub_init_hmm.publish(msg)
-        self.get_logger("published \"init_hmm\"")
+        miss_probs, dens_miss_probs = self.db.read_samples(self.area_id)
+        msg = suggester_to_msg(
+            init_prob, tr_prob, gaussian.avrs, gaussian.covars,
+            miss_probs, dens_miss_probs
+        )
+        self.pub_init_suggester.publish(msg)
+        self.get_logger("published init_suggester")
 
 
     def cb_new_hmm(self, msg:Float32MultiArray):
-        init_prob, tr_prob, avrs, covars = ros_msg_to_hmm_parameter(msg)
+        init_prob, tr_prob, avrs, covars = msg_to_hmm(msg)
         self.db.update_init_prob(self.area_id, init_prob)
         self.db.update_tr_prob(self.area_id, tr_prob)
         self.db.update_gaussian(self.area_id, Gaussian(avrs, covars))
-        self.get_logger("subscribed \"new_hmm\"")
+        self.get_logger("subscribed new_hmm")
+
+
+    def cb_new_dens(self, msg:Float32MultiArray):
+        dens_miss_probs = msg_to_dens(msg)
+        self.db.update_dens(self.area_id, dens_miss_probs)
+        self.get_logger("subscribed new_dens")
 
 
 def main():
