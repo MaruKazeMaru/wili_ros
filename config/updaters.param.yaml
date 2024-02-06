@@ -1,0 +1,4 @@
+db_agent:
+  ros__parameters:
+    db_url: sqlite:///db.sqlite3 # relative path from workspace
+    area_id: 1
