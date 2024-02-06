@@ -4,32 +4,45 @@
 import numpy as np
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float32MultiArray, MultiArrayLayout, MultiArrayDimension
+from std_msgs.msg import Float32MultiArray, MultiArrayLayout, MultiArrayDimension, Bool
 from wilitools import Gaussian, Suggester
 
 from ._convert import msg_to_suggester, msg_to_hmm, dens_to_msg
 
-class SuggesterDensUpdater(Node):
+class SuggesterNode(Node):
     def __init__(self):
-        super().__init__("suggester_dens_updater")
+        super().__init__("suggester")
 
         self.suggester:Suggester = None
 
+        self.pub_req_init_suggester = self.create_publisher(Bool, "req_init_suggester", 1)
         self.pub_new_dens = self.create_publisher(Float32MultiArray, "new_dens", 1)
         self.pub_suggest_res = self.create_publisher(Float32MultiArray, "suggest_res", 5)
 
         self.sub_init_suggester = self.create_subscription(Float32MultiArray, "init_suggester", self.cb_init_suggester, 1)
         self.sub_new_hmm = self.create_subscription(Float32MultiArray, "new_hmm", self.cb_new_hmm, 1)
         self.sub_where_found = self.create_subscription(Float32MultiArray, "where_found", self.cb_where_found, 5)
-        self.sub_suggest_req = self.create_publisher(Float32MultiArray, "suggest_req", self.cb_suggest_req, 5)
+        self.sub_suggest_req = self.create_subscription(Float32MultiArray, "suggest_req", self.cb_suggest_req, 5)
+
+        self.timer_req_init_suggester = self.create_timer(2, self.cb_req_init_suggester)
+
+
+    def cb_req_init_suggester(self):
+        msg = Bool()
+        self.pub_req_init_suggester.publish(msg)
+        self.get_logger().info("I want to init params")
 
 
     def cb_init_suggester(self, msg:Float32MultiArray):
         init_prob, tr_prob, avrs, covars, miss_probs, dens_miss_probs = msg_to_suggester(msg)
         self.suggester = Suggester(
-            init_prob, tr_prob, avrs, covars, 
+            init_prob, tr_prob, Gaussian(avrs, covars),
             miss_probs, dens_miss_probs
         )
+        self.get_logger().info("inited params")
+
+        self.destroy_subscription(self.sub_init_suggester)
+        self.destroy_timer(self.timer_req_init_suggester)
 
 
     def cb_new_hmm(self, msg:Float32MultiArray):
@@ -41,7 +54,7 @@ class SuggesterDensUpdater(Node):
         self.suggester.tr_prob = tr_prob
         self.suggester.gaussian.avrs = avrs
         self.suggester.gaussian.covars = covars
-        self.get_logger("subscribed \"new_hmm\"")
+        self.get_logger().info("set new hmm params")
 
 
     def cb_where_found(self, msg:Float32MultiArray):
@@ -52,6 +65,8 @@ class SuggesterDensUpdater(Node):
 
         msg = dens_to_msg(self.suggester.dens_miss_probs)
         self.pub_new_dens.publish(msg)
+
+        self.get_logger().info("calced new miss probs")
 
 
     def cb_suggest_req(self, msg:Float32MultiArray):
@@ -82,10 +97,12 @@ class SuggesterDensUpdater(Node):
         msg = Float32MultiArray(layout=layout, data=h.flatten())
         self.pub_suggest_res(msg)
 
+        self.get_logger().info("calced suggest result")
+
 
 def main():
     rclpy.init()
-    node = SuggesterDensUpdater()
+    node = SuggesterNode()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

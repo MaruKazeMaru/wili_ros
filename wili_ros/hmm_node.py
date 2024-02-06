@@ -5,20 +5,30 @@ from hmmlearn.hmm import GaussianHMM
 import numpy as np
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float32MultiArray, MultiArrayDimension, MultiArrayLayout
+from std_msgs.msg import Float32MultiArray, Bool
 
-from ._convert import hmm_to_msg, msg_to_hmm
+from ._convert import hmm_to_msg, msg_to_suggester
 
-class HMMUpdater(Node):
+class HMMNode(Node):
     def __init__(self):
-        super().__init__('hmm_updater')
+        super().__init__('hmm')
 
         self.motion_num:int = None
         self.model:GaussianHMM = None
 
+        self.pub_req_init_suggester = self.create_publisher(Bool, "req_init_suggester", 1)
         self.pub_new_hmm = self.create_publisher(Float32MultiArray, "new_hmm", 1)
-        self.sub_init_hmm = self.create_subscription(Float32MultiArray, "init_suggester", self.cb_init_suggester, 1)
+
+        self.sub_init_suggester = self.create_subscription(Float32MultiArray, "init_suggester", self.cb_init_suggester, 1)
         self.sub_obs = self.create_subscription(Float32MultiArray, "observation", self.cb_observation, 5)
+
+        self.timer_req_init_suggester = self.create_timer(2, self.cb_req_init_suggester)
+
+
+    def cb_req_init_suggester(self):
+        msg = Bool()
+        self.pub_req_init_suggester.publish(msg)
+        self.get_logger().info("I want to init params")
 
 
     def cb_observation(self, msg:Float32MultiArray):
@@ -30,13 +40,19 @@ class HMMUpdater(Node):
         self.model.fit(obs)
 
         hps = self._get_hmm_parameters()
-        msg = hmm_to_msg(*hps)
-        self.pub_new_hmm.publish(msg)
+        pub_msg = hmm_to_msg(*hps)
+        self.pub_new_hmm.publish(pub_msg)
+
+        self.get_logger().info("calced new hmm params")
 
 
     def cb_init_suggester(self, msg:Float32MultiArray):
-        hps = msg_to_hmm(msg)
-        self._set_hmm_parameters(*hps)
+        init_prob, tr_prob, avrs, covars, _, _ = msg_to_suggester(msg)
+        self._set_hmm_parameters(init_prob, tr_prob, avrs, covars)
+        self.get_logger().info("inited params")
+
+        self.destroy_subscription(self.sub_init_suggester)
+        self.destroy_timer(self.timer_req_init_suggester)
 
 
     def _get_hmm_parameters(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -70,7 +86,7 @@ class HMMUpdater(Node):
 
 def main():
     rclpy.init()
-    node = HMMUpdater()
+    node = HMMNode()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

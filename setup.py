@@ -22,8 +22,8 @@ setup(
     entry_points={
         'console_scripts': [
             'db_agent=wili_ros.db_agent:main',
-            'hmm_updater=wili_ros.hmm_updater:main',
-            'suggester_dens_updater=wili_ros.suggester_dens_updater:main',
+            'hmm=wili_ros.hmm_node:main',
+            'suggester=wili_ros.suggester_node:main',
         ],
     },
 )

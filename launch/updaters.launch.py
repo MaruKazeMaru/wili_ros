@@ -22,12 +22,12 @@ def generate_launch_description():
         # -----------
     	Node(
 	    	package="wili_ros",
-		    executable="hmm_updater",
+		    executable="hmm",
 	    	output="screen"
     	),
     	Node(
 	    	package="wili_ros",
-		    executable="suggester_dens_updater",
+		    executable="suggester",
 	    	output="screen"
     	),
         Node(
