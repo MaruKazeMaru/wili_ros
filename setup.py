@@ -25,6 +25,8 @@ setup(
             'db_agent=wili_ros.db_agent:main',
             'hmm=wili_ros.hmm_node:main',
             'suggester=wili_ros.suggester_node:main',
+            'obs_stacker=wili_ros.obs_stacker:main',
+            'apriltag=wili_ros.apriltag_node:main',
         ],
     },
 )
